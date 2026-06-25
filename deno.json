@@ -1,0 +1,14 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-all src/main.ts",
+    "start": "deno run --allow-all src/main.ts"
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.208.0/",
+    "dotenv": "https://deno.land/std@0.208.0/dotenv/mod.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window"]
+  }
+}
