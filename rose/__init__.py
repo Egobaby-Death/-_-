@@ -51,8 +51,10 @@ lang = Language()
 
 from anony.core.telegram import Telegram
 from anony.core.youtube import YouTube
+from anony.core.jiosaavn import JioSaavn
 tg = Telegram()
 yt = YouTube()
+saavn = JioSaavn(config.JIOSAAVN_API_KEY)
 
 from anony.helpers import Queue, Thumbnail
 queue = Queue()

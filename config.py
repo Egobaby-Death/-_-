@@ -48,6 +48,8 @@ class Config:
         self.DB_NAME = getenv("DB_NAME", "darklordsaura_db_user")
         self.OWNER_URL = getenv("OWNER_URL", "https://t.me/Riskyhater")
 
+        self.JIOSAAVN_API_KEY = getenv("JIOSAAVN_API_KEY", "")
+
     def check(self):
         missing = [
             var

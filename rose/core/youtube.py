@@ -15,6 +15,15 @@ from py_yt import Playlist, VideosSearch
 from anony import logger
 from anony.helpers import Track, utils
 
+_saavn = None
+
+def _get_saavn():
+    global _saavn
+    if _saavn is None:
+        from anony import saavn
+        _saavn = saavn
+    return _saavn
+
 
 class YouTube:
     def __init__(self):
@@ -70,8 +79,9 @@ class YouTube:
             _search = VideosSearch(query, limit=1, with_live=False)
             results = await _search.next()
         except Exception:
-            return None
-        if results and results["result"]:
+            results = None
+
+        if results and results.get("result"):
             data = results["result"][0]
             return Track(
                 id=data.get("id"),
@@ -85,6 +95,15 @@ class YouTube:
                 view_count=data.get("viewCount", {}).get("short"),
                 video=video,
             )
+
+        if not video:
+            logger.info(f"YouTube search failed for '{query}', trying JioSaavn…")
+            saavn = _get_saavn()
+            track = await saavn.search(query, m_id)
+            if track:
+                logger.info(f"JioSaavn found: {track.title}")
+                return track
+
         return None
 
     async def playlist(self, limit: int, user: str, url: str, video: bool) -> list[Track | None]:
@@ -109,7 +128,11 @@ class YouTube:
             pass
         return tracks
 
-    async def download(self, video_id: str, video: bool = False) -> str | None:
+    async def download(self, video_id: str, video: bool = False, fallback_url: str = None) -> str | None:
+        if video_id and video_id.startswith("jiosaavn:"):
+            saavn = _get_saavn()
+            return await saavn.download(fallback_url, video_id)
+
         url = self.base + video_id
 
         # Cache check – multiple extensions
