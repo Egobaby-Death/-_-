@@ -85,7 +85,9 @@ class TgCall(PyTgCalls):
         ) if config.THUMB_GEN else None
 
         if not media.file_path:
-            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            logger.warning(
+                f"play_media: no file for '{getattr(media, 'title', media.id)}', skipping silently."
+            )
             return await self.play_next(chat_id)
 
         stream = types.MediaStream(
@@ -161,7 +163,9 @@ class TgCall(PyTgCalls):
                 )
 
         except FileNotFoundError:
-            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            logger.warning(
+                f"play_media: file missing on disk for '{getattr(media, 'title', media.id)}', skipping."
+            )
             await self.play_next(chat_id)
         except exceptions.NoActiveGroupCall:
             await self.stop(chat_id)
