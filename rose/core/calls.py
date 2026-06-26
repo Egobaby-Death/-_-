@@ -1,7 +1,4 @@
-# Copyright (c) 2025 MalikX
-# Licensed under the MIT License.
-# This file is part of RoseX_Musicbot
-
+import asyncio
 
 from ntgcalls import (ConnectionNotFound, TelegramServerError,
                       RTMPStreamingUnsupported, ConnectionError)
@@ -14,6 +11,36 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 from anony import (app, config, db, lang, logger,
                    queue, thumb, userbot, yt)
 from anony.helpers import Media, Track, buttons
+
+
+async def _send_play_log(chat_id: int, media, user_mention: str, chat_title: str) -> None:
+    try:
+        text = (
+            f"🎵 <b>Now Playing</b>\n\n"
+            f"<blockquote>"
+            f"💬 Chat: <code>{chat_id}</code> | <b>{chat_title}</b>\n"
+            f"👤 Requested by: {user_mention}\n"
+            f"🎶 Title: <a href='{media.url}'>{media.title}</a>\n"
+            f"⏱ Duration: {media.duration}\n"
+            f"{'🎬 Video' if getattr(media, 'video', False) else '🎵 Audio'}"
+            f"</blockquote>"
+        )
+        await app.send_message(chat_id=app.logger, text=text)
+    except Exception as e:
+        logger.error(f"Play log failed: {e}")
+
+
+async def _send_stop_log(chat_id: int, reason: str, chat_title: str) -> None:
+    try:
+        text = (
+            f"⏹️ <b>Playback {reason}</b>\n\n"
+            f"<blockquote>"
+            f"💬 Chat: <code>{chat_id}</code> | <b>{chat_title}</b>"
+            f"</blockquote>"
+        )
+        await app.send_message(chat_id=app.logger, text=text)
+    except Exception as e:
+        logger.error(f"Stop log failed: {e}")
 
 
 class TgCall(PyTgCalls):
@@ -117,6 +144,16 @@ class TgCall(PyTgCalls):
                             reply_markup=keyboard,
                         )
                     media.message_id = sent.id
+
+                try:
+                    chat = await app.get_chat(chat_id)
+                    chat_title = chat.title or str(chat_id)
+                except Exception:
+                    chat_title = str(chat_id)
+                asyncio.create_task(
+                    _send_play_log(chat_id, media, media.user, chat_title)
+                )
+
         except FileNotFoundError:
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             await self.play_next(chat_id)

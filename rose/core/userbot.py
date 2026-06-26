@@ -1,8 +1,3 @@
-# Copyright (c) 2025 MalikX
-# Licensed under the MIT License.
-# This file is part of RoseX_Musicbot
-
-
 from pyrogram import Client
 
 from anony import config, logger
@@ -10,12 +5,6 @@ from anony import config, logger
 
 class Userbot(Client):
     def __init__(self):
-        """
-        Initializes the userbot with multiple clients.
-
-        This method sets up clients for the userbot using predefined session strings.
-        Each client is assigned a unique name based on the key in the `clients` dictionary.
-        """
         self.clients = []
         clients = {"one": "SESSION1", "two": "SESSION2", "three": "SESSION3"}
         for key, string_key in clients.items():
@@ -33,14 +22,6 @@ class Userbot(Client):
             )
 
     async def boot_client(self, num: int, ub: Client):
-        """
-        Boot a client and perform initial setup.
-        Args:
-            num (int): The client number to boot (1, 2, or 3).
-            ub (Client): The userbot client instance.
-        Raises:
-            SystemExit: If the client fails to send a message in the log group.
-        """
         clients = {
             1: self.one,
             2: self.two,
@@ -64,9 +45,6 @@ class Userbot(Client):
             pass
 
     async def boot(self):
-        """
-        Asynchronously starts the assistants.
-        """
         if config.SESSION1:
             await self.boot_client(1, self.one)
         if config.SESSION2:
@@ -74,10 +52,13 @@ class Userbot(Client):
         if config.SESSION3:
             await self.boot_client(3, self.three)
 
+        from anony import app
+        assistant_names = ", ".join(
+            f"@{c.username}" for c in self.clients if hasattr(c, "username") and c.username
+        )
+        await app.finish_boot(assistant_names or "N/A")
+
     async def exit(self):
-        """
-        Asynchronously stops the assistants.
-        """
         if config.SESSION1:
             await self.one.stop()
         if config.SESSION2:

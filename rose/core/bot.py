@@ -1,10 +1,25 @@
-# Copyright (c) 2025 MalikX
-# Licensed under the MIT License.
-# This file is part of RoseX_Musicbot
-
+import asyncio
 import pyrogram
 
 from anony import config, logger
+
+
+_BOOT_STEPS = [
+    "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>⟳ Connecting to Telegram...</blockquote>",
+    "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>✅ Telegram connected\n⟳ Loading modules...</blockquote>",
+    "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>✅ Telegram connected\n✅ Modules loaded\n⟳ Connecting to Database...</blockquote>",
+    "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>✅ Telegram connected\n✅ Modules loaded\n✅ Database connected\n⟳ Starting voice engine...</blockquote>",
+]
+
+_BOOT_DONE = (
+    "✅ <b>Rose X Music is Online!</b>\n\n"
+    "<blockquote>"
+    "🤖 Bot: {name}\n"
+    "🆔 ID: <code>{bot_id}</code>\n"
+    "🎙 Assistant: {assistant}\n"
+    "📦 Version: 3.0.3"
+    "</blockquote>"
+)
 
 
 class Bot(pyrogram.Client):
@@ -22,14 +37,9 @@ class Bot(pyrogram.Client):
         self.logger = config.LOGGER_ID
         self.bl_users = pyrogram.filters.user()
         self.sudoers = pyrogram.filters.user(self.owner)
+        self._boot_msg = None
 
     async def boot(self):
-        """
-        Starts the bot and performs initial setup.
-
-        Raises:
-            SystemExit: If the bot fails to access the log group or is not an administrator in the logger group.
-        """
         await super().start()
         self.id = self.me.id
         self.name = self.me.first_name
@@ -37,18 +47,31 @@ class Bot(pyrogram.Client):
         self.mention = self.me.mention
 
         try:
-            await self.send_message(self.logger, "Bot Started")
-            get = await self.get_chat_member(self.logger, self.id)
+            self._boot_msg = await self.send_message(self.logger, _BOOT_STEPS[0])
+            for step in _BOOT_STEPS[1:]:
+                await asyncio.sleep(0.8)
+                await self._boot_msg.edit_text(step)
         except Exception as ex:
             raise SystemExit(f"Bot has failed to access the log group: {self.logger}\nReason: {ex}")
 
+        get = await self.get_chat_member(self.logger, self.id)
         if get.status != pyrogram.enums.ChatMemberStatus.ADMINISTRATOR:
             raise SystemExit("Please promote the bot as an admin in logger group.")
         logger.info(f"Bot started as @{self.username}")
 
+    async def finish_boot(self, assistant_name: str):
+        if self._boot_msg:
+            try:
+                await self._boot_msg.edit_text(
+                    _BOOT_DONE.format(
+                        name=self.mention,
+                        bot_id=self.id,
+                        assistant=assistant_name or "N/A",
+                    )
+                )
+            except Exception:
+                pass
+
     async def exit(self):
-        """
-        Asynchronously stops the bot.
-        """
         await super().stop()
         logger.info("Bot stopped.")
