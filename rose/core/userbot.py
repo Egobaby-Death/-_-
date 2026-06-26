@@ -47,21 +47,21 @@ class Userbot(Client):
             3: self.three,
         }
         client = clients[num]
-        await client.start()
         try:
-            await client.send_message(config.LOGGER_ID, "Assistant Started")
-        except Exception:
-            raise SystemExit(f"Assistant {num} failed to send message in log group.")
+            await client.start()
+            try:
+                await client.send_message(config.LOGGER_ID, "Assistant Started")
+            except Exception:
+                raise SystemExit(f"Assistant {num} failed to send message in log group.")
 
-        client.id = ub.me.id
-        client.name = ub.me.first_name
-        client.username = ub.me.username
-        client.mention = ub.me.mention
-        self.clients.append(client)
-        
+            client.id = ub.me.id
+            client.name = ub.me.first_name
+            client.username = ub.me.username
+            client.mention = ub.me.mention
+            self.clients.append(client)
+            logger.info(f"Assistant {num} started as @{client.username}")
         except Exception:
             pass
-        logger.info(f"Assistant {num} started as @{client.username}")
 
     async def boot(self):
         """
