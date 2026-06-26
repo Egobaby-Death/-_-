@@ -104,7 +104,7 @@ class TgCall(PyTgCalls):
             await client.play(
                 chat_id=chat_id,
                 stream=stream,
-                config=types.GroupCallConfig(auto_start=False),
+                config=types.GroupCallConfig(auto_start=True),
             )
             if not seek_time:
                 media.time = 1
@@ -188,6 +188,10 @@ class TgCall(PyTgCalls):
             return await self.replay(chat_id)
 
         media = queue.get_next(chat_id)
+
+        if not media:
+            return await self.stop(chat_id)
+
         try:
             if media.message_id:
                 await app.delete_messages(
@@ -198,9 +202,6 @@ class TgCall(PyTgCalls):
                 media.message_id = 0
         except Exception:
             pass
-
-        if not media:
-            return await self.stop(chat_id)
 
         _lang = await lang.get_lang(chat_id)
         msg = await app.send_message(chat_id=chat_id, text=_lang["play_next"])
@@ -217,6 +218,8 @@ class TgCall(PyTgCalls):
 
 
     async def ping(self) -> float:
+        if not self.clients:
+            return 0.0
         pings = [client.ping for client in self.clients]
         return round(sum(pings) / len(pings), 2)
 
