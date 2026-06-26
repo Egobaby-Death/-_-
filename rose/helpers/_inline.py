@@ -67,7 +67,6 @@ class Inline:
 
     def lang_markup(self, _lang: str) -> types.InlineKeyboardMarkup:
         langs = lang.get_languages()
-
         buttons = [
             self.ikb(
                 text=f"{name} ({code}) {'✔️' if code == _lang else ''}",
@@ -85,14 +84,7 @@ class Inline:
         self, chat_id: int, item_id: str, _text: str
     ) -> types.InlineKeyboardMarkup:
         return self.ikm(
-            [
-                [
-                    self.ikb(
-                        text=f"▶️ {_text}",
-                        callback_data=f"controls force {chat_id} {item_id}"
-                    )
-                ]
-            ]
+            [[self.ikb(text=f"▶️ {_text}", callback_data=f"controls force {chat_id} {item_id}")]]
         )
 
     def queue_markup(
@@ -110,24 +102,15 @@ class Inline:
         return self.ikm(
             [
                 [
-                    self.ikb(
-                        text=f"🔒 {lang['play_mode']} ➜",
-                        callback_data="settings",
-                    ),
+                    self.ikb(text=f"🔒 {lang['play_mode']} ➜", callback_data="settings"),
                     self.ikb(text=str(admin_only), callback_data="settings play"),
                 ],
                 [
-                    self.ikb(
-                        text=f"🗑 {lang['cmd_delete']} ➜",
-                        callback_data="settings",
-                    ),
+                    self.ikb(text=f"🗑 {lang['cmd_delete']} ➜", callback_data="settings"),
                     self.ikb(text=str(cmd_delete), callback_data="settings delete"),
                 ],
                 [
-                    self.ikb(
-                        text=f"🌐 {lang['language']} ➜",
-                        callback_data="settings",
-                    ),
+                    self.ikb(text=f"🌐 {lang['language']} ➜", callback_data="settings"),
                     self.ikb(text=lang_codes[language], callback_data="language"),
                 ],
             ]
@@ -136,30 +119,50 @@ class Inline:
     def start_key(
         self, lang: dict, private: bool = False
     ) -> types.InlineKeyboardMarkup:
-        rows = [
-            [
-                self.ikb(
-                    text=f"➕ {lang['add_me']}",
-                    url=f"https://t.me/{app.username}?startgroup=true",
-                )
-            ],
-            [self.ikb(text=f"❓ {lang['help']}", callback_data="help")],
-            [
-                self.ikb(text=f"💬 {lang['support']}", url=config.SUPPORT_CHAT),
-                self.ikb(text=f"📢 {lang['channel']}", url=config.SUPPORT_CHANNEL),
-            ],
-        ]
         if private:
-            rows += [
+            rows = [
+                # Full-width blue CTA — Add to group
                 [
                     self.ikb(
-                        text=f"👑 {lang['owner']}",
+                        text=f"🎵 ➕ {lang['add_me']}",
+                        url=f"https://t.me/{app.username}?startgroup=true",
+                    )
+                ],
+                # Side-by-side blue URL buttons
+                [
+                    self.ikb(text=f"💬 {lang['support']}", url=config.SUPPORT_CHAT),
+                    self.ikb(text=f"📢 {lang['channel']}", url=config.SUPPORT_CHANNEL),
+                ],
+                # Help — full width
+                [self.ikb(text=f"❓ {lang['help']}", callback_data="help")],
+                # Owner — full width, warm/red emoji feel
+                [
+                    self.ikb(
+                        text=f"♥️ 👑 {lang['owner']}",
                         url=config.OWNER_URL,
                     )
-                ]
+                ],
             ]
         else:
-            rows += [[self.ikb(text=f"🌐 {lang['language']}", callback_data="language")]]
+            rows = [
+                # Full-width blue CTA
+                [
+                    self.ikb(
+                        text=f"🎵 ➕ {lang['add_me']}",
+                        url=f"https://t.me/{app.username}?startgroup=true",
+                    )
+                ],
+                # Side-by-side URL buttons
+                [
+                    self.ikb(text=f"💬 {lang['support']}", url=config.SUPPORT_CHAT),
+                    self.ikb(text=f"📢 {lang['channel']}", url=config.SUPPORT_CHANNEL),
+                ],
+                # Help and Language side by side
+                [
+                    self.ikb(text=f"❓ {lang['help']}", callback_data="help"),
+                    self.ikb(text=f"🌐 {lang['language']}", callback_data="language"),
+                ],
+            ]
         return self.ikm(rows)
 
     def yt_key(self, link: str) -> types.InlineKeyboardMarkup:
