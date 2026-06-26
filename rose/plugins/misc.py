@@ -74,7 +74,10 @@ async def update_timer(length=10, sleep=12):
                     next = queue.get_next(chat_id, check=True)
                     if next and not next.file_path:
                         next.file_path = await yt.download(
-                            next.id, video=next.video, fallback_url=getattr(next, "url", None)
+                            next.id,
+                            video=next.video,
+                            fallback_url=getattr(next, "url", None),
+                            title=getattr(next, "title", None),
                         )
 
                 if remaining < 10:

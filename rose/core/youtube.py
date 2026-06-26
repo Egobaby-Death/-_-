@@ -52,7 +52,7 @@ class YouTube:
         if not self.cookies:
             if not self.warned:
                 self.warned = True
-                logger.warning("Cookies are missing; downloads might fail.")
+                logger.warning("No YouTube cookies configured; using cookieless mode.")
             return None
         return random.choice(self.cookies)
 
@@ -128,14 +128,20 @@ class YouTube:
             pass
         return tracks
 
-    async def download(self, video_id: str, video: bool = False, fallback_url: str = None) -> str | None:
+    async def download(
+        self,
+        video_id: str,
+        video: bool = False,
+        fallback_url: str = None,
+        title: str = None,
+    ) -> str | None:
         if video_id and video_id.startswith("jiosaavn:"):
             saavn = _get_saavn()
             return await saavn.download(fallback_url, video_id)
 
         url = self.base + video_id
 
-        # Cache check – multiple extensions
+        # Cache check
         for ext in (["mp4"] if video else ["webm", "m4a", "opus", "mp4"]):
             filename = f"downloads/{video_id}.{ext}"
             if Path(filename).exists():
@@ -145,27 +151,29 @@ class YouTube:
         base_opts = {
             "outtmpl": "downloads/%(id)s.%(ext)s",
             "quiet": True,
+            "noprogress": True,
             "noplaylist": True,
             "geo_bypass": True,
             "no_warnings": True,
             "overwrites": False,
             "nocheckcertificate": True,
-            "retries": 5,
-            "fragment_retries": 5,
-            "socket_timeout": 30,
+            "retries": 3,
+            "fragment_retries": 3,
+            "socket_timeout": 25,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "web"],
-                    # "skip" wali line bilkul mat daalo
+                    "player_client": ["android", "ios", "web"],
                 }
             },
             "http_headers": {
                 "User-Agent": (
-                    "com.google.ios.youtube/19.29.1 "
-                    "(iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)"
+                    "com.google.android.youtube/17.36.4 "
+                    "(Linux; U; Android 12; GB) gzip"
                 ),
             },
         }
+        if cookie:
+            base_opts["cookiefile"] = cookie
 
         if video:
             ydl_opts = {
@@ -196,16 +204,29 @@ class YouTube:
                 except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError):
                     return None
                 except Exception as ex:
-                    logger.warning("Download failed: %s", ex)
+                    logger.warning("YT download error: %s", ex)
                     return None
             return None
 
         await asyncio.to_thread(_download)
 
-        # Post-download scan – find the file with any allowed extension
+        # Post-download scan
         exts = ["mp4"] if video else ["webm", "m4a", "opus", "mp3", "mp4"]
         for ext in exts:
             filename = f"downloads/{video_id}.{ext}"
             if Path(filename).exists():
                 return filename
+
+        # YouTube failed — silently fallback to JioSaavn (audio only)
+        if not video:
+            query = title or video_id
+            logger.info(f"YT download failed for '{query}', trying JioSaavn fallback…")
+            saavn = _get_saavn()
+            saavn_track = await saavn.search(query, 0)
+            if saavn_track:
+                result = await saavn.download(saavn_track.url, saavn_track.id)
+                if result:
+                    logger.info(f"JioSaavn fallback succeeded for '{query}'")
+                    return result
+
         return None

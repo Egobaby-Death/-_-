@@ -216,12 +216,13 @@ class TgCall(PyTgCalls):
                 media.id,
                 video=media.video,
                 fallback_url=getattr(media, "url", None),
+                title=getattr(media, "title", None),
             )
             if not media.file_path:
-                await self.play_next(chat_id)
-                return await msg.edit_text(
-                    _lang["error_no_file"].format(config.SUPPORT_CHAT)
+                logger.warning(
+                    f"Download failed for '{getattr(media, 'title', media.id)}', skipping."
                 )
+                return await self.play_next(chat_id)
 
         media.message_id = msg.id
         await self.play_media(chat_id, msg, media)
