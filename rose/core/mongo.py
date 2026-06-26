@@ -119,6 +119,10 @@ class MongoDB:
 
     # ASSISTANT METHODS
     async def set_assistant(self, chat_id: int) -> int:
+        if not userbot.clients:
+            raise RuntimeError(
+                "No assistants connected. Check SESSION env var and restart the bot."
+            )
         num = randint(1, len(userbot.clients))
         await self.assistantdb.update_one(
             {"_id": chat_id},
@@ -131,6 +135,11 @@ class MongoDB:
     async def get_assistant(self, chat_id: int):
         from anony import anon
 
+        if not userbot.clients:
+            raise RuntimeError(
+                "No assistants connected. Check SESSION env var and restart the bot."
+            )
+
         if chat_id not in self.assistant:
             doc = await self.assistantdb.find_one({"_id": chat_id})
             num = doc["num"] if doc else None
@@ -142,6 +151,11 @@ class MongoDB:
         return anon.clients[self.assistant[chat_id] - 1]
 
     async def get_client(self, chat_id: int):
+        if not userbot.clients:
+            raise RuntimeError(
+                "No assistants connected. Check SESSION env var and restart the bot."
+            )
+
         if chat_id not in self.assistant:
             await self.get_assistant(chat_id)
 

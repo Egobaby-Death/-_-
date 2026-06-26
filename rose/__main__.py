@@ -19,7 +19,18 @@ async def auto_ping():
             ram_used = mem.used / 1024**3
             ram_total = mem.total / 1024**3
             cpu_percent = psutil.cpu_percent(interval=1)
-            logger.info(f"🔁 Auto Ping | CPU: {cpu_percent}% | RAM: {ram_used:.1f}/{ram_total:.1f} GB")
+            assistants = len(userbot.clients)
+            msg = (
+                f"🔁 <b>Auto Ping</b>\n"
+                f"├ CPU: <code>{cpu_percent}%</code>\n"
+                f"├ RAM: <code>{ram_used:.1f}/{ram_total:.1f} GB</code>\n"
+                f"└ Assistants: <code>{assistants}</code>"
+            )
+            logger.info(f"Auto Ping | CPU: {cpu_percent}% | RAM: {ram_used:.1f}/{ram_total:.1f} GB | Assistants: {assistants}")
+            try:
+                await app.send_message(config.LOGGER_ID, msg)
+            except Exception as e:
+                logger.warning(f"Auto ping to LOGGER_ID failed: {e}")
         except Exception as e:
             logger.error(f"Auto ping failed: {e}")
         await asyncio.sleep(PING_INTERVAL)

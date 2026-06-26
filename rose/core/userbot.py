@@ -21,48 +21,53 @@ class Userbot(Client):
                 ),
             )
 
-    async def boot_client(self, num: int, ub: Client):
-        clients = {
-            1: self.one,
-            2: self.two,
-            3: self.three,
-        }
+    async def boot_client(self, num: int):
+        clients = {1: self.one, 2: self.two, 3: self.three}
         client = clients[num]
         try:
             await client.start()
-            try:
-                await client.send_message(config.LOGGER_ID, "Assistant Started")
-            except Exception:
-                raise SystemExit(f"Assistant {num} failed to send message in log group.")
 
-            client.id = ub.me.id
-            client.name = ub.me.first_name
-            client.username = ub.me.username
-            client.mention = ub.me.mention
+            client.id = client.me.id
+            client.name = client.me.first_name
+            client.username = client.me.username
+            client.mention = client.me.mention
             self.clients.append(client)
             logger.info(f"Assistant {num} started as @{client.username}")
-        except Exception:
-            pass
+
+            try:
+                await client.send_message(config.LOGGER_ID, f"✅ Assistant {num} (@{client.username}) started.")
+            except Exception as e:
+                logger.warning(f"Assistant {num} couldn't message logger group: {e}")
+
+        except Exception as e:
+            logger.error(f"Assistant {num} failed to start: {e}")
 
     async def boot(self):
         if config.SESSION1:
-            await self.boot_client(1, self.one)
+            await self.boot_client(1)
         if config.SESSION2:
-            await self.boot_client(2, self.two)
+            await self.boot_client(2)
         if config.SESSION3:
-            await self.boot_client(3, self.three)
+            await self.boot_client(3)
+
+        if not self.clients:
+            logger.error(
+                "No assistants started! Check SESSION env var and ensure the "
+                "session string is valid."
+            )
 
         from anony import app
         assistant_names = ", ".join(
             f"@{c.username}" for c in self.clients if hasattr(c, "username") and c.username
         )
-        await app.finish_boot(assistant_names or "N/A")
+        await app.finish_boot(assistant_names or "None — check SESSION")
 
     async def exit(self):
-        if config.SESSION1:
-            await self.one.stop()
-        if config.SESSION2:
-            await self.two.stop()
-        if config.SESSION3:
-            await self.three.stop()
+        for key in ("one", "two", "three"):
+            client = getattr(self, key, None)
+            if client and hasattr(client, "is_connected") and client.is_connected:
+                try:
+                    await client.stop()
+                except Exception:
+                    pass
         logger.info("Assistants stopped.")

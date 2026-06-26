@@ -49,7 +49,13 @@ def checkUB(play):
                 return await m.reply_text(m.lang["play_admin"])
 
         if chat_id not in db.active_calls:
-            client = await db.get_client(chat_id)
+            try:
+                client = await db.get_client(chat_id)
+            except RuntimeError as e:
+                logger.error(f"get_client failed: {e}")
+                return await m.reply_text(
+                    "❌ Assistant not connected. Ask the owner to check the SESSION and restart the bot."
+                )
             try:
                 member = await app.get_chat_member(chat_id, client.id)
                 if member.status in [

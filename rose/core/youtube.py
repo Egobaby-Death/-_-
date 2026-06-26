@@ -278,7 +278,7 @@ class YouTube:
                 )
                 extra = {"format": fmt}
 
-            # Try each strategy in order
+            # Try each strategy in order (android first — best without cookies)
             for strategy in _YT_STRATEGIES:
                 ydl_opts = {
                     **base_opts,
@@ -297,7 +297,7 @@ class YouTube:
                 try:
                     await asyncio.wait_for(
                         asyncio.to_thread(_do_download),
-                        timeout=90,
+                        timeout=45,
                     )
                 except asyncio.TimeoutError:
                     logger.warning(f"YT strategy '{strategy['name']}' timed out for {video_id}")
@@ -306,12 +306,28 @@ class YouTube:
 
                 result = _scan_file(video_id, video)
                 if result:
-                    logger.info(f"YT download success via '{strategy['name']}': {video_id}")
+                    logger.info(f"YT download ok via '{strategy['name']}': {video_id}")
                     return result
 
-                # Clean up any partial files before next strategy
+                # Clean up partial files before next strategy
                 _cleanup_partial(video_id)
                 logger.warning(f"YT strategy '{strategy['name']}' failed for {video_id}")
+
+                # After first YT strategy fails (audio only) — immediately try JioSaavn
+                # This avoids waiting 3 more slow strategies when YT is fully blocked
+                if not video and strategy["name"] == "android":
+                    query = title or video_id
+                    logger.info(f"android failed, quick-trying JioSaavn for '{query}'…")
+                    try:
+                        saavn = _get_saavn()
+                        saavn_track = await saavn.search(query, 0)
+                        if saavn_track:
+                            result = await saavn.download(saavn_track.url, saavn_track.id)
+                            if result:
+                                logger.info(f"JioSaavn quick fallback succeeded for '{query}'")
+                                return result
+                    except Exception as e:
+                        logger.warning(f"JioSaavn quick fallback error: {e}")
 
             # All YouTube strategies failed — JioSaavn fallback (audio only)
             if not video:
