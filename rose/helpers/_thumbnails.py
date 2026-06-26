@@ -33,8 +33,9 @@ class Thumbnail:
 
     async def generate(self, song: Track, size=(1280, 720)) -> str:
         try:
-            temp = f"cache/temp_{song.id}.jpg"
-            output = f"cache/{song.id}.png"
+            safe_id = str(song.id).replace(":", "_").replace("/", "_")
+            temp = f"cache/temp_{safe_id}.jpg"
+            output = f"cache/{safe_id}.png"
             if os.path.exists(output):
                 return output
 
@@ -58,9 +59,12 @@ class Thumbnail:
             image.paste(_rect, (183, 30), _rect)
 
             draw = ImageDraw.Draw(image)
+            view = song.view_count or ""
+            channel = (song.channel_name or "")[:25]
+            label = f"{channel} | {view}" if view else channel
             draw.text(
                 xy=(50, 560),
-                text=f"{song.channel_name[:25]} | {song.view_count}",
+                text=label,
                 font=self.font2, fill=self.fill,
             )
             draw.text((50, 600), song.title[:50], font=self.font1, fill=self.fill)
