@@ -95,6 +95,7 @@ class TgCall(PyTgCalls):
                             media=InputMediaPhoto(
                                 media=_thumb,
                                 caption=text,
+                                has_spoiler=True,
                             ),
                             reply_markup=keyboard,
                         )
@@ -107,6 +108,7 @@ class TgCall(PyTgCalls):
                             photo=_thumb,
                             caption=text,
                             reply_markup=keyboard,
+                            has_spoiler=True,
                         )
                     else:
                         sent = await app.send_message(
