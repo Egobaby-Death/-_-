@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 # This file is part of RoseX_Musicbot
 
+import asyncio
 import aiohttp
 from pathlib import Path
 
@@ -36,9 +37,9 @@ class JioSaavn:
                     if resp.status != 200:
                         logger.warning(f"JioSaavn search HTTP {resp.status}")
                         return None
-                    data = await resp.json()
+                    data = await resp.json(content_type=None)
 
-            results = data.get("data", {}).get("results", [])
+            results = (data.get("data") or {}).get("results", [])
             if not results:
                 return None
 
@@ -46,7 +47,7 @@ class JioSaavn:
             song_id = song.get("id", "unknown")
 
             download_url = None
-            for entry in reversed(song.get("downloadUrl", [])):
+            for entry in reversed(song.get("downloadUrl") or []):
                 if entry.get("url"):
                     download_url = entry["url"]
                     break
@@ -54,12 +55,12 @@ class JioSaavn:
             if not download_url:
                 return None
 
-            duration_sec = int(song.get("duration", 0))
+            duration_sec = int(song.get("duration") or 0)
             mins, secs = divmod(duration_sec, 60)
             duration = f"{mins:02d}:{secs:02d}"
 
             title = (song.get("name") or "Unknown")[:25]
-            thumbnail = (song.get("image") or [{}])[-1].get("url", "")
+            thumbnail = ((song.get("image") or [{}])[-1] or {}).get("url", "")
             primaries = (song.get("artists") or {}).get("primary", [])
             artist = primaries[0].get("name", "JioSaavn") if primaries else "JioSaavn"
 
@@ -75,6 +76,9 @@ class JioSaavn:
                 view_count=None,
                 video=False,
             )
+        except asyncio.TimeoutError:
+            logger.warning("JioSaavn search timed out")
+            return None
         except Exception as e:
             logger.warning(f"JioSaavn search error: {e}")
             return None
@@ -83,27 +87,43 @@ class JioSaavn:
         if not song_url:
             return None
 
-        safe_id = song_id.replace("jiosaavn:", "")
-        filename = f"downloads/js_{safe_id}.m4a"
-
-        if Path(filename).exists():
-            return filename
-
         try:
+            safe_id = str(song_id).replace("jiosaavn:", "")
+            filename = f"downloads/js_{safe_id}.m4a"
+
+            if Path(filename).exists() and Path(filename).stat().st_size > 1024:
+                return filename
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     song_url,
-                    timeout=aiohttp.ClientTimeout(total=60),
+                    timeout=aiohttp.ClientTimeout(total=90),
+                    allow_redirects=True,
                 ) as resp:
                     if resp.status != 200:
                         logger.warning(f"JioSaavn download HTTP {resp.status}")
                         return None
                     with open(filename, "wb") as f:
-                        async for chunk in resp.content.iter_chunked(8192):
-                            f.write(chunk)
-            return filename
+                        async for chunk in resp.content.iter_chunked(16384):
+                            if chunk:
+                                f.write(chunk)
+
+            if Path(filename).exists() and Path(filename).stat().st_size > 1024:
+                return filename
+            Path(filename).unlink(missing_ok=True)
+            return None
+
+        except asyncio.TimeoutError:
+            logger.warning(f"JioSaavn download timed out: {song_id}")
+            try:
+                Path(f"downloads/js_{str(song_id).replace('jiosaavn:','')}.m4a").unlink(missing_ok=True)
+            except Exception:
+                pass
+            return None
         except Exception as e:
             logger.warning(f"JioSaavn download error: {e}")
-            if Path(filename).exists():
-                Path(filename).unlink(missing_ok=True)
+            try:
+                Path(f"downloads/js_{str(song_id).replace('jiosaavn:','')}.m4a").unlink(missing_ok=True)
+            except Exception:
+                pass
             return None
