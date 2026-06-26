@@ -23,7 +23,12 @@ async def cancel_dl(_, query: types.CallbackQuery):
 @can_manage_vc
 async def _controls(_, query: types.CallbackQuery):
     args = query.data.split()
-    action, chat_id = args[1], int(args[2])
+    if len(args) < 3:
+        return await query.answer()
+    try:
+        action, chat_id = args[1], int(args[2])
+    except (IndexError, ValueError):
+        return await query.answer()
     qaction = len(args) == 4
     user = query.from_user.mention
 

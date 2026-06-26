@@ -142,7 +142,7 @@ class MongoDB:
 
         if chat_id not in self.assistant:
             doc = await self.assistantdb.find_one({"_id": chat_id})
-            num = doc["num"] if doc else None
+            num = doc.get("num") if doc else None
 
             if not num or num > len(anon.clients):
                 num = await self.set_assistant(chat_id)
