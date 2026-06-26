@@ -85,8 +85,15 @@ class TgCall(PyTgCalls):
         ) if config.THUMB_GEN else None
 
         if not media.file_path:
+            media.file_path = await yt.download(
+                media.id,
+                video=getattr(media, "video", False),
+                fallback_url=getattr(media, "url", None),
+                title=getattr(media, "title", None),
+            )
+        if not media.file_path:
             logger.warning(
-                f"play_media: no file for '{getattr(media, 'title', media.id)}', skipping silently."
+                f"play_media: no file for '{getattr(media, 'title', media.id)}', skipping."
             )
             return await self.play_next(chat_id)
 

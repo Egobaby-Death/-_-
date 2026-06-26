@@ -65,20 +65,28 @@ async def play_hndlr(
             file = await yt.search(url, sent.id, video=video)
 
         if not file:
-            return await sent.edit_text(
-                m.lang["play_not_found"].format(config.SUPPORT_CHAT)
-            )
+            try:
+                await sent.delete()
+            except Exception:
+                pass
+            return
 
     elif len(m.command) >= 2:
         query = " ".join(m.command[1:])
         file = await yt.search(query, sent.id, video=video)
         if not file:
-            return await sent.edit_text(
-                m.lang["play_not_found"].format(config.SUPPORT_CHAT)
-            )
+            try:
+                await sent.delete()
+            except Exception:
+                pass
+            return
 
     if not file:
-        return await sent.edit_text(m.lang["play_usage"])
+        try:
+            await sent.delete()
+        except Exception:
+            pass
+        return
 
     if file.duration_sec > config.DURATION_LIMIT:
         return await sent.edit_text(
@@ -116,9 +124,9 @@ async def play_hndlr(
             return
 
     if not file.file_path:
+        import os
         safe_id = str(file.id).replace(":", "_")
         for ext in (["mp4"] if video else ["webm", "m4a", "opus", "mp4"]):
-            import os
             fname = f"downloads/{safe_id}.{ext}"
             if os.path.exists(fname):
                 file.file_path = fname
@@ -131,6 +139,12 @@ async def play_hndlr(
                 fallback_url=getattr(file, "url", None),
                 title=getattr(file, "title", None),
             )
+        if not file.file_path:
+            try:
+                await sent.delete()
+            except Exception:
+                pass
+            return
 
     await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
     if not tracks:
