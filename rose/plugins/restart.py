@@ -10,7 +10,7 @@ import asyncio
 
 from pyrogram import filters, types
 
-from anony import app, db, lang, stop
+from anony import app, lang
 
 
 @app.on_message(filters.command(["logs"]) & app.sudoers)
@@ -30,6 +30,7 @@ async def _logs(_, m: types.Message):
 @app.on_message(filters.command(["logger"]) & app.sudoers)
 @lang.language()
 async def _logger(_, m: types.Message):
+    from anony import db
     if len(m.command) < 2:
         return await m.reply_text(m.lang["logger_usage"].format(m.command[0]))
     if m.command[1] not in ("on", "off"):
@@ -50,12 +51,14 @@ async def _restart(_, m: types.Message):
 
     for directory in ["cache", "downloads"]:
         shutil.rmtree(directory, ignore_errors=True)
+        os.makedirs(directory, exist_ok=True)
+
+    try:
+        os.remove("log.txt")
+    except Exception:
+        pass
 
     await sent.edit_text(m.lang["restarted"])
-    task = asyncio.create_task(stop())
-    await task
-
-    try: os.remove("log.txt")
-    except Exception: pass
+    await asyncio.sleep(0.8)
 
     os.execl(sys.executable, sys.executable, "-m", "anony")
