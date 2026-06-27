@@ -73,9 +73,11 @@ _YT_STRATEGIES = [
 
 def _scan_file(video_id: str, video: bool) -> str | None:
     exts = ["mp4"] if video else ["webm", "m4a", "opus", "mp3", "mp4"]
+    # Minimum 100 KB — rejects corrupt/partial downloads that yt-dlp left behind
+    min_size = 102_400
     for ext in exts:
         path = f"downloads/{video_id}.{ext}"
-        if Path(path).exists() and Path(path).stat().st_size > 1024:
+        if Path(path).exists() and Path(path).stat().st_size > min_size:
             return path
     return None
 
