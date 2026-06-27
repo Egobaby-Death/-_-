@@ -246,19 +246,56 @@ class TgCall(PyTgCalls):
         return round(sum(pings) / len(pings), 2)
 
 
+    async def _try_reconnect(self, chat_id: int) -> None:
+        """
+        When the assistant drops from VC due to a transient network error,
+        wait briefly then try to resume from the same position.
+        If the voice chat was permanently closed / assistant was kicked by admin,
+        play_media will raise NoActiveGroupCall → stop() is called from there.
+        """
+        await asyncio.sleep(6)
+
+        if not await db.get_call(chat_id):
+            return
+
+        media = queue.get_current(chat_id)
+        if not media:
+            await self.stop(chat_id)
+            return
+
+        seek_from = max(media.time - 5, 0)
+        logger.info(f"VC reconnect: chat {chat_id}, resuming from {seek_from}s")
+
+        _lang = await lang.get_lang(chat_id)
+        try:
+            msg = await app.send_message(
+                chat_id=chat_id,
+                text=_lang.get("play_reconnecting", "🔄 Reconnecting to voice chat..."),
+            )
+            media.message_id = msg.id
+            await self.play_media(chat_id, msg, media, seek_time=seek_from)
+        except Exception as e:
+            logger.warning(f"VC reconnect failed for chat {chat_id}: {e}")
+            await self.stop(chat_id)
+
+
     async def decorators(self, client: PyTgCalls) -> None:
         @client.on_update()
         async def update_handler(_, update: types.Update) -> None:
             if isinstance(update, types.StreamEnded):
-                if update.stream_type == types.StreamEnded.Type.AUDIO:
+                if update.stream_type in (
+                    types.StreamEnded.Type.AUDIO,
+                    types.StreamEnded.Type.VIDEO,
+                ):
                     await self.play_next(update.chat_id)
             elif isinstance(update, types.ChatUpdate):
-                if update.status in [
+                if update.status == types.ChatUpdate.Status.CLOSED_VOICE_CHAT:
+                    await self.stop(update.chat_id)
+                elif update.status in [
                     types.ChatUpdate.Status.KICKED,
                     types.ChatUpdate.Status.LEFT_GROUP,
-                    types.ChatUpdate.Status.CLOSED_VOICE_CHAT,
                 ]:
-                    await self.stop(update.chat_id)
+                    asyncio.create_task(self._try_reconnect(update.chat_id))
 
 
     async def boot(self) -> None:
