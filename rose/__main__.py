@@ -2,6 +2,8 @@ import asyncio
 import signal
 import importlib
 import psutil
+import time
+from pathlib import Path
 from contextlib import suppress
 
 from anony import (anon, app, config, db, logger,
@@ -36,6 +38,25 @@ async def auto_ping():
         await asyncio.sleep(PING_INTERVAL)
 
 
+async def auto_cleanup():
+    """Delete downloaded files older than 2 hours to keep Railway disk free."""
+    downloads = Path("downloads")
+    downloads.mkdir(exist_ok=True)
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            now = time.time()
+            deleted = 0
+            for f in downloads.iterdir():
+                if f.is_file() and (now - f.stat().st_mtime) > 7200:
+                    f.unlink(missing_ok=True)
+                    deleted += 1
+            if deleted:
+                logger.info(f"🧹 Auto-cleanup: removed {deleted} old file(s) from downloads/")
+        except Exception as e:
+            logger.error(f"Auto-cleanup failed: {e}")
+
+
 async def idle():
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -67,6 +88,7 @@ async def main():
 
     asyncio.create_task(auto_ping())
     asyncio.create_task(start_keepalive())
+    asyncio.create_task(auto_cleanup())
 
     await idle()
     asyncio.create_task(stop())
