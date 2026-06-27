@@ -50,7 +50,7 @@ async def _broadcast(_, message: types.Message):
     u_count = 0
     pin_count = 0
     fail_count = 0
-    failed_file = None
+    cleaned = 0
     start_time = time.time()
 
     async with broadcasting:
@@ -65,7 +65,9 @@ async def _broadcast(_, message: types.Message):
                     g_count += 1
                     if not skip_pin:
                         try:
-                            await app.pin_chat_message(chat_id, sent_msg.id, disable_notification=False)
+                            await app.pin_chat_message(
+                                chat_id, sent_msg.id, disable_notification=False
+                            )
                             pin_count += 1
                         except Exception:
                             pass
@@ -75,19 +77,47 @@ async def _broadcast(_, message: types.Message):
                 await asyncio.sleep(0.3)
 
             except errors.FloodWait as fw:
-                await asyncio.sleep(fw.value + 10)
+                await asyncio.sleep(fw.value + 5)
+                try:
+                    if copy_msg:
+                        sent_msg = await msg.copy(chat_id, reply_markup=msg.reply_markup)
+                    else:
+                        sent_msg = await msg.forward(chat_id)
+                    if chat_id in groups:
+                        g_count += 1
+                    else:
+                        u_count += 1
+                except Exception:
+                    fail_count += 1
+
             except errors.UserIsBlocked:
-                fail_count += 1
                 await db.rm_user(chat_id)
+                cleaned += 1
+
             except errors.ChatWriteForbidden:
-                fail_count += 1
+                if chat_id in groups:
+                    await db.rm_chat(chat_id)
+                else:
+                    await db.rm_user(chat_id)
+                cleaned += 1
+
             except errors.PeerIdInvalid:
+                if chat_id in groups:
+                    await db.rm_chat(chat_id)
+                else:
+                    await db.rm_user(chat_id)
+                cleaned += 1
+
+            except errors.InputUserDeactivated:
+                await db.rm_user(chat_id)
+                cleaned += 1
+
+            except errors.ChannelPrivate:
+                await db.rm_chat(chat_id)
+                cleaned += 1
+
+            except Exception:
                 fail_count += 1
-            except Exception as ex:
-                fail_count += 1
-                if not failed_file:
-                    failed_file = open("broadcast_errors.txt", "w")
-                failed_file.write(f"{chat_id} — {ex}\n")
 
     elapsed = int(time.time() - start_time)
     mins, secs = divmod(elapsed, 60)
@@ -99,17 +129,10 @@ async def _broadcast(_, message: types.Message):
         f"💬 Groups mein bheja: `{g_count}`\n"
         f"👥 Users ke DM mein bheja: `{u_count}`\n"
         f"📌 Groups mein pin hua: `{pin_count}`\n"
+        f"🧹 Dead chats/users cleaned: `{cleaned}`\n"
         f"❌ Failed: `{fail_count}`\n\n"
         f"📦 Total: `{g_count + u_count}` / `{len(all_targets)}`\n"
         f"⏱ Time laga: `{time_taken}`"
     )
-
-    if failed_file:
-        failed_file.close()
-        await message.reply_document(document="broadcast_errors.txt", caption=summary)
-        try:
-            os.remove("broadcast_errors.txt")
-        except Exception:
-            pass
 
     await sent.edit_text(summary)
