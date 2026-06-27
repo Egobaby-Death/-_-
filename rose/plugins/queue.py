@@ -49,16 +49,20 @@ async def _queue_func(_, m: types.Message):
             m.lang["playing"] if _playing else m.lang["paused"],
             _playing,
         )
-    if thumb:
-        await _reply.edit_media(
-            media=types.InputMediaPhoto(
-                media=_thumb,
-                caption=_text,
-            ),
-            reply_markup=_buttons,
-        )
-    else:
-        await _reply.edit_text(
-            text=_text,
-            reply_markup=_buttons,
-        )
+    if _thumb:
+        try:
+            await _reply.edit_media(
+                media=types.InputMediaPhoto(
+                    media=_thumb,
+                    caption=_text,
+                ),
+                reply_markup=_buttons,
+            )
+            return
+        except Exception:
+            pass
+
+    await _reply.edit_text(
+        text=_text,
+        reply_markup=_buttons,
+    )
