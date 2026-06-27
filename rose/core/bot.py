@@ -4,6 +4,16 @@ import pyrogram
 from anony import config, logger
 
 
+_ANIM_FRAMES = [
+    "ѕтαятιиg тнє вσт..",
+    "ѕтαятιиg тнє вσт.....",
+    "ѕтαятιиg тнє вσт..........",
+    "ѕтαятιиg тнє вσт..........\n∂ιиg ∂σиg...",
+    "ѕтαятιиg тнє вσт..........\n∂ιиg ∂σиg......",
+    "ѕтαятιиg тнє вσт..........\n∂ιиg ∂σиg.........",
+    "ѕтαятιиg тнє вσт..........\n∂ιиg ∂σиg.........\n\n<b>ѕтαятє∂</b> ✅",
+]
+
 _BOOT_STEPS = [
     "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>⟳ Connecting to Telegram...</blockquote>",
     "🌹 <b>Rose X Music</b> — Starting up...\n\n<blockquote>✅ Telegram connected\n⟳ Loading modules...</blockquote>",
@@ -47,7 +57,14 @@ class Bot(pyrogram.Client):
         self.mention = self.me.mention
 
         try:
-            self._boot_msg = await self.send_message(self.logger, _BOOT_STEPS[0])
+            self._boot_msg = await self.send_message(self.logger, _ANIM_FRAMES[0])
+            for frame in _ANIM_FRAMES[1:]:
+                await asyncio.sleep(0.6)
+                await self._boot_msg.edit_text(frame)
+
+            await asyncio.sleep(1.0)
+
+            await self._boot_msg.edit_text(_BOOT_STEPS[0])
             for step in _BOOT_STEPS[1:]:
                 await asyncio.sleep(0.8)
                 await self._boot_msg.edit_text(step)
